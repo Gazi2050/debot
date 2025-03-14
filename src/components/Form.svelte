@@ -1,4 +1,6 @@
 <script lang="ts">
+    import CopyButton from "./CopyButton.svelte";
+    import Toggle from "./Toggle.svelte";
 </script>
 
 <div class="flex justify-center items-center max-w-[700px] mx-auto h-screen">
@@ -11,8 +13,8 @@
                 <p>German</p>
             </div>
             <div class="flex gap-1">
-                <p>copy</p>
-                <p>toggle</p>
+                <CopyButton />
+                <Toggle />
             </div>
         </div>
         <textarea
