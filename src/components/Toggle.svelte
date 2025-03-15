@@ -21,9 +21,11 @@
             class="absolute inset-y-0 start-0 z-10 m-1 inline-flex size-6 items-center justify-center rounded-full bg-white text-gray-400 transition-all peer-checked:start-6 peer-checked:text-green-600"
         >
             {#if $isChecked}
-                <Check class="text-green-600" />
+                <!-- <Check class="text-green-600" /> -->
+                <p class="text-sm font-bold">EN</p>
             {:else}
-                <X class="text-gray-400" />
+                <!-- <X class="text-gray-400" /> -->
+                <p class="text-sm font-bold">GN</p>
             {/if}
         </span>
     </label>

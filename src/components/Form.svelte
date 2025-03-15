@@ -1,20 +1,21 @@
 <script lang="ts">
     import CopyButton from "./CopyButton.svelte";
+    import SpeakButton from "./SpeakButton.svelte";
     import Toggle from "./Toggle.svelte";
 </script>
 
-<div class="flex justify-center items-center max-w-[700px] mx-auto h-screen">
+<div
+    class="flex justify-center items-center max-w-[700px] md:mx-auto md:h-screen mx-[6px] mt-36 md:mt-0"
+>
     <div class="w-full">
         <p class="text-4xl text-center font-bold mb-10">De Bot</p>
         <div
-            class="flex justify-between items-center bg-zinc-600 px-5 py-1 text-white rounded-t-lg"
+            class="flex justify-between items-center bg-zinc-600 px-2 py-1 text-white rounded-t-lg"
         >
-            <div>
-                <p>German</p>
-            </div>
-            <div class="flex gap-1">
+            <Toggle />
+            <div class="flex justify-center items-center gap-1">
+                <SpeakButton />
                 <CopyButton />
-                <Toggle />
             </div>
         </div>
         <textarea
