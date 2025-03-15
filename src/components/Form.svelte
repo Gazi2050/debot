@@ -1,7 +1,24 @@
 <script lang="ts">
+    import { onMount } from "svelte";
     import CopyButton from "./CopyButton.svelte";
     import SpeakButton from "./SpeakButton.svelte";
     import Toggle from "./Toggle.svelte";
+
+    let textInput = "";
+
+    function speakGerman() {
+        const text = textInput;
+        const speechRequest = new SpeechSynthesisUtterance(text);
+        const voices = speechSynthesis.getVoices();
+        speechRequest.voice =
+            voices.find((voice) => voice.lang === "de-DE") || null;
+
+        speechSynthesis.speak(speechRequest);
+    }
+
+    onMount(() => {
+        window.speechSynthesis.onvoiceschanged = () => {};
+    });
 </script>
 
 <div
@@ -14,11 +31,12 @@
         >
             <Toggle />
             <div class="flex justify-center items-center gap-1">
-                <SpeakButton />
+                <SpeakButton func={speakGerman} />
                 <CopyButton />
             </div>
         </div>
         <textarea
+            bind:value={textInput}
             class="w-full h-40 resize-none border p-5 rounded-b-lg focus:outline-0"
             placeholder="type here..."
         ></textarea>

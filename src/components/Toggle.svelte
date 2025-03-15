@@ -5,7 +5,7 @@
     const isChecked = writable(false);
 </script>
 
-<div class="flex justify-center items-center p-[6px]">
+<div class="flex justify-center items-center p-[6px] select-none">
     <label
         for="AcceptConditions"
         class="relative inline-block h-8 w-14 cursor-pointer rounded-full bg-gray-300 transition [-webkit-tap-highlight-color:_transparent] has-[:checked]:bg-green-500"
@@ -22,10 +22,10 @@
         >
             {#if $isChecked}
                 <!-- <Check class="text-green-600" /> -->
-                <p class="text-sm font-bold">EN</p>
+                <p class="text-sm font-bold text-black">EN</p>
             {:else}
                 <!-- <X class="text-gray-400" /> -->
-                <p class="text-sm font-bold">GN</p>
+                <p class="text-sm font-bold text-black">DE</p>
             {/if}
         </span>
     </label>
