@@ -1,8 +1,5 @@
 <script lang="ts">
-    import { writable } from "svelte/store";
-    import { Check, X } from "@lucide/svelte";
-
-    const isChecked = writable(false);
+    let isChecked = $state(false);
 </script>
 
 <div class="flex justify-center items-center p-[6px] select-none">
@@ -14,13 +11,13 @@
             type="checkbox"
             id="AcceptConditions"
             class="peer sr-only"
-            bind:checked={$isChecked}
+            bind:checked={isChecked}
         />
 
         <span
             class="absolute inset-y-0 start-0 z-10 m-1 inline-flex size-6 items-center justify-center rounded-full bg-white text-gray-400 transition-all peer-checked:start-6 peer-checked:text-green-600"
         >
-            {#if $isChecked}
+            {#if isChecked}
                 <!-- <Check class="text-green-600" /> -->
                 <p class="text-sm font-bold text-black">EN</p>
             {:else}
