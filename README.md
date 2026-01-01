@@ -1,38 +1,50 @@
-# sv
+# 🤖 DeBot — Instant German-English Translation & TTS 🇩🇪🇺🇸
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Welcome to **De Bot**, a **minimal**, **fast**, and **elegant** translation assistant designed for seamless German-English communication. Experience **natural voices** and **instant translation** in one beautiful interface.
 
-## Creating a project
+## 🔑 Key Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- ⚡ **Instant Access**  
+  Start translating and speaking immediately — **no setup**, **no logins**.
 
-```bash
-# create a new project in the current directory
-npx sv create
+- 🗣️ **Natural TTS**  
+  High-quality, natural-sounding voices with **synchronized word highlighting**.
 
-# create a new project in my-app
-npx sv create my-app
-```
+- 🧠 **Smart Translation**  
+  Auto-detects and translates between German and English instantly.
 
-## Developing
+- 🌐 **Bilingual Support**  
+  Seamlessly switch between English (EN) and German (DE) modes.
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+- ⏯️ **Speech Control**  
+  Play, pause, and stop text-to-speech with intuitive controls.
 
-```bash
-npm run dev
+- 📋 **Text Actions**  
+  One-click copy to clipboard for quick sharing.
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+## 🚀 Getting Started (Local Use)
 
-## Building
+Follow these simple steps to run **De Bot** locally:
 
-To create a production version of your app:
+1. **Clone the repository:**
 
-```bash
-npm run build
-```
+   ```bash
+   git clone https://github.com/Gazi2050/debot.git
 
-You can preview the production build with `npm run preview`.
+   cd debot
+   ```
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+2. **Install dependencies:**
+
+   ```bash
+   pnpm install
+   ```
+
+3. **Start the server:**
+
+   ```bash
+   pnpm dev
+   ```
+
+4. **Open your browser and visit:**
+   [http://localhost:5173](http://localhost:5173) 🎉
