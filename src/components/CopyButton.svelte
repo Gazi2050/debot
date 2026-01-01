@@ -1,10 +1,20 @@
 <script lang="ts">
     import { Copy, Check } from "@lucide/svelte";
+    import Button from "./ui/Button.svelte";
 
-    let { text, label = "Copy", copiedLabel = "Copied" } = $props();
+    interface Props {
+        text: string;
+        label?: string;
+        copiedLabel?: string;
+    }
+
+    let { text, label = "Copy", copiedLabel = "Copied" }: Props = $props();
     let copied = $state(false);
 
-    async function copyToClipboard() {
+    /**
+     * Copies text to the clipboard.
+     */
+    async function copyToClipboard(): Promise<void> {
         if (!text) return;
         try {
             await navigator.clipboard.writeText(text);
@@ -16,15 +26,11 @@
     }
 </script>
 
-<button
-    class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-100 font-bold text-xs uppercase tracking-wider transition-all duration-200 hover:bg-zinc-700 hover:text-white active:scale-95 cursor-pointer border border-zinc-700/50"
+<Button
     onclick={copyToClipboard}
+    label={copied ? copiedLabel : label}
+    variant="secondary"
+    icon={copied ? Check : Copy}
     title={label}
->
-    {copied ? copiedLabel : label}
-    {#if copied}
-        <Check size={14} class="text-green-400" strokeWidth={3} />
-    {:else}
-        <Copy size={14} strokeWidth={2.5} />
-    {/if}
-</button>
+    class={copied ? "text-green-400" : ""}
+/>

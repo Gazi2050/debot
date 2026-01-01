@@ -1,7 +1,11 @@
 import { error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import * as googleTTS from 'google-tts-api';
+import type { RequestHandler } from './$types';
+import { splitTextIntoChunks } from '../../../utils/text';
 
+/**
+ * Handles TTS audio requests via Google TTS.
+ */
 export const GET: RequestHandler = async ({ url }) => {
     const text = url.searchParams.get('text');
     const lang = url.searchParams.get('lang') || 'de';
@@ -11,50 +15,43 @@ export const GET: RequestHandler = async ({ url }) => {
     }
 
     try {
-        // Manually split text into 200 character chunks
-        // This is more robust than relying on the library's internal splitter for nonsensical strings
-        const chunks: string[] = [];
-        for (let i = 0; i < text.length; i += 200) {
-            chunks.push(text.substring(i, i + 200));
-        }
+        const chunks = splitTextIntoChunks(text, 200);
+        const buffers: Uint8Array[] = [];
 
-        console.log(`Processing ${chunks.length} chunks for text of length ${text.length}`);
-
-        // Fetch all chunks
-        const buffers: ArrayBuffer[] = [];
         for (const chunk of chunks) {
-            const chunkUrl = googleTTS.getAudioUrl(chunk, {
+            const audioUrl = googleTTS.getAudioUrl(chunk, {
                 lang,
                 slow: false,
                 host: 'https://translate.google.com',
             });
 
-            const response = await fetch(chunkUrl);
+            const response = await fetch(audioUrl);
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`Google TTS error for chunk: "${chunk}":`, errorText);
-                throw new Error(`Google TTS failed: ${response.status} ${response.statusText}`);
+                throw new Error(`Failed to fetch chunk: ${response.statusText}`);
             }
-            buffers.push(await response.arrayBuffer());
+
+            const buffer = await response.arrayBuffer();
+            buffers.push(new Uint8Array(buffer));
         }
 
-        // Concatenate all buffers
-        const totalLength = buffers.reduce((acc, buf) => acc + buf.byteLength, 0);
-        const combinedBuffer = new Uint8Array(totalLength);
+        const totalLength = buffers.reduce((acc, b) => acc + b.length, 0);
+        const combined = new Uint8Array(totalLength);
         let offset = 0;
-        for (const buf of buffers) {
-            combinedBuffer.set(new Uint8Array(buf), offset);
-            offset += buf.byteLength;
+
+        for (const b of buffers) {
+            combined.set(b, offset);
+            offset += b.length;
         }
 
-        return new Response(combinedBuffer, {
+        return new Response(combined, {
             headers: {
                 'Content-Type': 'audio/mpeg',
                 'Cache-Control': 'public, max-age=3600'
             }
         });
-    } catch (err: any) {
-        console.error('TTS Error:', err);
-        throw error(500, err.message || 'Failed to generate speech');
+    } catch (err: unknown) {
+        console.error('TTS Proxy Error:', err);
+        const message = err instanceof Error ? err.message : 'Speech synthesis failed';
+        throw error(500, message);
     }
 };

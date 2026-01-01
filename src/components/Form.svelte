@@ -1,51 +1,25 @@
 <script lang="ts">
     import Toggle from "./Toggle.svelte";
+    import Header from "./Header.svelte";
     import SpeakButton from "./SpeakButton.svelte";
     import CopyButton from "./CopyButton.svelte";
     import PauseButton from "./PauseButton.svelte";
     import StopButton from "./StopButton.svelte";
     import TranslateButton from "./TranslateButton.svelte";
+    import { mapWordsForHighlighting } from "../utils/text";
+    import type { WordMap, TranslationResult } from "../types";
 
-    let textInput = $state("");
-    let isEnglish = $state(false);
-    let isSpeaking = $state(false);
-    let isPaused = $state(false);
-    let isTranslating = $state(false);
+    import { appState } from "../store/app.svelte";
+
     let audio: HTMLAudioElement | null = null;
     let textareaRef: HTMLTextAreaElement;
-
-    interface WordMap {
-        text: string;
-        start: number;
-        end: number;
-        timeOffset: number;
-    }
-
     let words: WordMap[] = [];
 
-    function prepareWords() {
-        const rawWords =
-            textInput.match(/[\w\u00C0-\u017F]+|\s+|[^\w\s\u00C0-\u017F]+/g) ||
-            [];
-        let currentPos = 0;
-        words = rawWords.map((w) => {
-            const start = currentPos;
-            const end = currentPos + w.length;
-            currentPos = end;
-            return { text: w, start, end, timeOffset: 0 };
-        });
-
-        const totalChars = textInput.length;
-        if (totalChars === 0) return;
-
-        // Calculate time offsets based on relative position in text
-        words.forEach((w) => {
-            w.timeOffset = w.start / totalChars;
-        });
-    }
-
-    function updateHighlight() {
-        if (!audio || !isSpeaking || !textareaRef) return;
+    /**
+     * Updates word highlighting in the textarea based on audio progress.
+     */
+    function updateHighlight(): void {
+        if (!audio || !appState.isSpeaking || !textareaRef) return;
 
         const duration = audio.duration;
         if (!duration || isNaN(duration)) {
@@ -67,115 +41,157 @@
         if (currentWord && !/\s+/.test(currentWord.text)) {
             textareaRef.setSelectionRange(currentWord.start, currentWord.end);
             textareaRef.focus();
-        } else if (currentWord) {
-            // If it's a space or punctuation, don't clear the range yet to avoid flickering
-            // unless the next word has started.
         }
 
-        if (isSpeaking) {
+        if (appState.isSpeaking) {
             requestAnimationFrame(updateHighlight);
         }
     }
 
-    async function translate() {
-        if (!textInput || isTranslating) return;
+    /**
+     * Translates input text and updates UI.
+     */
+    async function translate(): Promise<void> {
+        if (!appState.textInput || appState.isTranslating) return;
 
-        isTranslating = true;
+        appState.isTranslating = true;
         try {
-            const sl = isEnglish ? "en" : "de";
-            const tl = isEnglish ? "de" : "en";
-            const translateUrl = `/api/translate?text=${encodeURIComponent(textInput)}&sl=${sl}&tl=${tl}`;
+            const sl = appState.isEnglish ? "en" : "de";
+            const tl = appState.isEnglish ? "de" : "en";
+            const translateUrl = `/api/translate?text=${encodeURIComponent(appState.textInput)}&sl=${sl}&tl=${tl}`;
 
             const response = await fetch(translateUrl);
             if (!response.ok) throw new Error("Translation failed");
 
-            const data = await response.json();
-            textInput = data.translatedText;
-
-            // Flip the language toggle after translation
-            isEnglish = !isEnglish;
+            const data: TranslationResult = await response.json();
+            appState.textInput = data.translatedText;
+            appState.isEnglish = !appState.isEnglish;
         } catch (err) {
             console.error("Translation error:", err);
         } finally {
-            isTranslating = false;
+            appState.isTranslating = false;
         }
     }
 
-    async function speak() {
-        if (!textInput) return;
+    /**
+     * Starts or resumes TTS playback.
+     */
+    async function speak(): Promise<void> {
+        if (!appState.textInput) return;
 
-        if (isPaused && audio) {
+        if (appState.isPaused && audio) {
             audio.play();
-            isPaused = false;
-            isSpeaking = true;
-            requestAnimationFrame(updateHighlight);
+            appState.isPaused = false;
+            appState.isSpeaking = true;
+            if (audio.duration && !isNaN(audio.duration)) {
+                requestAnimationFrame(updateHighlight);
+            }
             return;
         }
 
-        if (isSpeaking) return;
+        if (appState.isSpeaking || appState.isLoadingAudio) return;
 
-        prepareWords();
-        isSpeaking = true;
+        words = mapWordsForHighlighting(appState.textInput);
+        appState.isLoadingAudio = true;
+
         try {
             if (audio) {
                 audio.pause();
                 audio = null;
             }
 
-            const lang = isEnglish ? "en" : "de";
-            const speakUrl = `/api/speak?text=${encodeURIComponent(textInput)}&lang=${lang}`;
+            const lang = appState.isEnglish ? "en" : "de";
+            const speakUrl = `/api/speak?text=${encodeURIComponent(appState.textInput)}&lang=${lang}`;
 
-            audio = new Audio(speakUrl);
+            // Fetch audio as blob to ensure we have the full content and duration
+            const response = await fetch(speakUrl);
+            if (!response.ok) throw new Error("Audio fetch failed");
+
+            const blob = await response.blob();
+            const audioUrl = URL.createObjectURL(blob);
+
+            audio = new Audio(audioUrl);
+
+            // Wait for metadata to ensure duration is available
+            await new Promise((resolve, reject) => {
+                if (!audio) return reject("Audio not initialized");
+
+                audio.onloadedmetadata = () => {
+                    if (audio && audio.duration === Infinity) {
+                        // Fallback for infinity duration (rare with blob)
+                        audio.currentTime = 1e101;
+                        audio.ontimeupdate = () => {
+                            if (!audio) return;
+                            audio.currentTime = 0;
+                            audio.ontimeupdate = null;
+                            appState.isLoadingAudio = false;
+                            resolve(true);
+                        };
+                    } else {
+                        appState.isLoadingAudio = false;
+                        resolve(true);
+                    }
+                };
+
+                audio.onerror = (e) => {
+                    appState.isLoadingAudio = false;
+                    reject(e);
+                };
+            });
+
+            if (!audio) return;
 
             audio.onplay = () => {
-                isSpeaking = true;
-                isPaused = false;
+                appState.isSpeaking = true;
+                appState.isPaused = false;
                 requestAnimationFrame(updateHighlight);
             };
 
             audio.onpause = () => {
                 if (audio && audio.currentTime > 0 && !audio.ended) {
-                    isPaused = true;
-                    isSpeaking = false;
+                    appState.isPaused = true;
+                    appState.isSpeaking = false;
                 }
             };
 
             audio.onended = () => {
-                isSpeaking = false;
-                isPaused = false;
+                appState.isSpeaking = false;
+                appState.isPaused = false;
                 audio = null;
+                URL.revokeObjectURL(audioUrl); // Clean up
                 textareaRef.setSelectionRange(0, 0);
-            };
-
-            audio.onerror = (e) => {
-                console.error("Audio playback error:", e);
-                isSpeaking = false;
-                isPaused = false;
-                audio = null;
             };
 
             await audio.play();
         } catch (err) {
             console.error("Speech error:", err);
-            isSpeaking = false;
-            isPaused = false;
+            appState.isSpeaking = false;
+            appState.isPaused = false;
+            appState.isLoadingAudio = false;
+            audio = null;
         }
     }
 
-    function pauseAudio() {
-        if (audio && isSpeaking) {
+    /**
+     * Pauses audio playback.
+     */
+    function pauseAudio(): void {
+        if (audio && appState.isSpeaking) {
             audio.pause();
         }
     }
 
-    function stopAudio() {
+    /**
+     * Stops audio and resets UI.
+     */
+    function stopAudio(): void {
         if (audio) {
             audio.pause();
             audio.currentTime = 0;
             audio = null;
         }
-        isSpeaking = false;
-        isPaused = false;
+        appState.isSpeaking = false;
+        appState.isPaused = false;
         if (textareaRef) {
             textareaRef.setSelectionRange(0, 0);
         }
@@ -185,27 +201,7 @@
 <div
     class="min-h-screen flex flex-col items-center justify-center p-4 sm:p-12 overflow-x-hidden"
 >
-    <header class="mb-8 sm:mb-14 text-center relative w-full px-4">
-        <!-- Subtle background glow -->
-        <div
-            class="absolute -inset-10 bg-zinc-400/5 blur-3xl rounded-full -z-10"
-        ></div>
-
-        <h1
-            class="text-4xl sm:text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-zinc-100 to-zinc-500 mb-2 drop-shadow-sm"
-        >
-            De Bot
-        </h1>
-        <div class="flex items-center justify-center gap-2 sm:gap-3">
-            <div class="h-px w-6 sm:w-8 bg-zinc-800"></div>
-            <p
-                class="text-[8px] sm:text-[10px] uppercase tracking-[0.2em] sm:tracking-[0.3em] text-zinc-500 font-bold"
-            >
-                minimal german text to speech
-            </p>
-            <div class="h-px w-6 sm:w-8 bg-zinc-800"></div>
-        </div>
-    </header>
+    <Header />
 
     <main class="w-full max-w-3xl px-2 sm:px-0">
         <div
@@ -215,56 +211,59 @@
                 class="flex flex-col sm:flex-row justify-between items-center px-4 py-3 bg-zinc-900/80 border-b border-zinc-800/50 gap-4 sm:gap-0"
             >
                 <Toggle
-                    bind:checked={isEnglish}
-                    disabled={isSpeaking || isPaused}
+                    bind:checked={appState.isEnglish}
+                    disabled={appState.isSpeaking || appState.isPaused}
                 />
+
                 <div class="flex flex-wrap items-center justify-center gap-2">
                     <TranslateButton
                         func={translate}
-                        targetLang={isEnglish ? "DE" : "EN"}
-                        loading={isTranslating}
+                        targetLang={appState.isEnglish ? "DE" : "EN"}
+                        loading={appState.isTranslating}
+                        disabled={appState.isSpeaking || appState.isPaused}
                     />
 
-                    {#if isSpeaking}
+                    {#if appState.isSpeaking}
                         <PauseButton
                             func={pauseAudio}
-                            label={isEnglish ? "Pause" : "Pause"}
+                            label={appState.isEnglish ? "Pause" : "Pause"}
                         />
                         <StopButton
                             func={stopAudio}
-                            label={isEnglish ? "Stop" : "Stopp"}
+                            label={appState.isEnglish ? "Stop" : "Stop"}
                         />
-                    {:else if isPaused}
+                    {:else if appState.isPaused}
                         <SpeakButton
                             func={speak}
-                            label={isEnglish ? "Resume" : "Fortsetzen"}
+                            label={appState.isEnglish ? "Resume" : "Fortsetzen"}
                             variant="secondary"
                         />
                         <StopButton
                             func={stopAudio}
-                            label={isEnglish ? "Stop" : "Stopp"}
+                            label={appState.isEnglish ? "Stop" : "Stop"}
                         />
                     {:else}
                         <SpeakButton
                             func={speak}
-                            label={isEnglish ? "Speak" : "Sprechen"}
+                            label={appState.isEnglish ? "Speak" : "Sprechen"}
+                            loading={appState.isLoadingAudio}
                         />
                     {/if}
 
                     <CopyButton
-                        text={textInput}
-                        label={isEnglish ? "Copy" : "Kopieren"}
-                        copiedLabel={isEnglish ? "Copied" : "Kopiert"}
+                        text={appState.textInput}
+                        label={appState.isEnglish ? "Copy" : "Kopieren"}
+                        copiedLabel={appState.isEnglish ? "Copied" : "Kopiert"}
                     />
                 </div>
             </div>
 
             <textarea
                 bind:this={textareaRef}
-                bind:value={textInput}
-                readonly={isSpeaking || isPaused}
+                bind:value={appState.textInput}
+                readonly={appState.isSpeaking || appState.isPaused}
                 class="w-full h-64 sm:h-80 p-5 sm:p-8 bg-transparent text-zinc-100 placeholder-zinc-600 resize-none focus:outline-none text-lg sm:text-xl leading-relaxed transition-colors duration-200"
-                placeholder={isEnglish
+                placeholder={appState.isEnglish
                     ? "Type your English text here..."
                     : "Geben Sie hier Ihren deutschen Text ein..."}
             ></textarea>
@@ -272,8 +271,8 @@
             <div
                 class="px-6 py-3 flex justify-end text-[9px] sm:text-[10px] uppercase tracking-widest text-zinc-600 font-bold border-t border-zinc-800/30"
             >
-                {textInput.length}
-                {isEnglish ? "characters" : "zeichen"}
+                {appState.textInput.length}
+                {appState.isEnglish ? "characters" : "zeichen"}
             </div>
         </div>
     </main>

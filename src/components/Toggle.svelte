@@ -1,7 +1,15 @@
 <script lang="ts">
-    let { checked = $bindable(), disabled = false } = $props();
+    interface Props {
+        checked: boolean;
+        disabled?: boolean;
+    }
 
-    function toggle() {
+    let { checked = $bindable(), disabled = false }: Props = $props();
+
+    /**
+     * Toggles the checked state.
+     */
+    function toggle(): void {
         if (disabled) return;
         checked = !checked;
     }
@@ -18,24 +26,22 @@
         role="checkbox"
         {disabled}
     >
-        <!-- Background track labels -->
         <div
             class="absolute inset-0 flex items-center justify-between px-3.5 z-0"
         >
             <span
                 class="text-xs font-black tracking-widest text-zinc-500 transition-colors uppercase"
-                >DE</span
+                >EN</span
             >
             <span
                 class="text-xs font-black tracking-widest text-zinc-500 transition-colors uppercase"
-                >EN</span
+                >DE</span
             >
         </div>
 
-        <!-- Sliding thumb -->
         <div
             class="absolute top-0 h-full w-1/2 flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-900 shadow-lg transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-10"
-            style:left={checked ? "50%" : "0%"}
+            style:left={checked ? "0%" : "50%"}
         >
             <span class="text-[11px] font-black uppercase tracking-wider">
                 {checked ? "EN" : "DE"}
