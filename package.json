@@ -30,6 +30,7 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^0.482.0"
+		"@lucide/svelte": "^0.482.0",
+		"google-tts-api": "^2.0.2"
 	}
 }
