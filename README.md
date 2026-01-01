@@ -1,6 +1,6 @@
-# 🤖 DeBot — Instant German-English Translation & TTS 🇩🇪🇺🇸
+# DeBot — Instant German-English Translation & TTS
 
-Welcome to **De Bot**, a **minimal**, **fast**, and **elegant** translation assistant designed for seamless German-English communication. Experience **natural voices** and **instant translation** in one beautiful interface.
+Welcome to **DeBot**, a **minimal**, **fast**, and **elegant** translation assistant designed for seamless German-English communication. Experience **natural voices** and **instant translation** in one beautiful interface.
 
 ## 🔑 Key Features
 
